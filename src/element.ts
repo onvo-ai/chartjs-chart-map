@@ -1,6 +1,6 @@
 import { Element } from 'chart.js';
 
-export default class MapElement extends Element {
+export class MapElement extends Element {
 
     static id = 'map';
 

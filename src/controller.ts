@@ -4,49 +4,36 @@ import {
   Chart
 } from 'chart.js';
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
-// import { dark, light } from './themes';
+import { light } from './themes';
 
 export interface PointDataPoint {
   type: "point"
   lat: number;
   lng: number;
-  label?: string;
-  color?: string;
-  size?: number;
 }
 export interface LineDataPoint {
   type: "line"
-  points: {
-    lat: number;
-    lng: number;
-  }[];
-  label?: string;
-  color?: string;
+  points: google.maps.LatLngLiteral[];
 }
 export interface PolygonDataPoint {
   type: "polygon"
-  points: {
-    lat: number;
-    lng: number;
-  }[];
-  label?: string;
-  color?: string;
+  points: google.maps.LatLngLiteral[];
 }
 
 export type MapDataPoint = PointDataPoint | LineDataPoint | PolygonDataPoint;
 
 export interface MapChartDataset extends ChartDataset<'map', MapDataPoint[]> {
   data: MapDataPoint[];
+  backgroundColor?: string;
+  borderColor?: string;
 }
 
 export interface MapChartOptions {
   zoom?: number;
   center?: google.maps.LatLngLiteral;
-  markerStyle?: {
-    defaultColor: string;
-    defaultSize: number;
-    shape: 'circle' | 'square' | 'pin';
-  };
+  backgroundColor?: string;
+  borderColor?: string;
+  shape: 'circle' | 'square' | 'pin';
 }
 
 // Chart.js type extension
@@ -61,7 +48,7 @@ declare module 'chart.js' {
 }
 
 // Map Plugin
-export default class MapController extends DatasetController {
+export class MapController extends DatasetController {
   static id = 'map';
 
   static defaults = {
@@ -73,8 +60,11 @@ export default class MapController extends DatasetController {
       mode: 'nearest',
       intersect: true
     },
-    legend: {
-      display: false
+    plugins: {
+
+      legend: {
+        display: false
+      }
     },
     scales: {
       x: {
@@ -97,13 +87,23 @@ export default class MapController extends DatasetController {
     const parent = chart.canvas.parentElement;
     if (!parent) return;
 
+    const element = document.createElement('div');
+    element.style.width = '100%';
+    element.style.position = 'absolute';
+    element.style.top = '0px';
+    element.style.bottom = '0px';
+    element.style.borderRadius = '8px';
+
+    parent.appendChild(element);
+
+
     // Initialize Google Map
-    const map = new google.maps.Map(parent, {
+    const map = new google.maps.Map(element, {
       zoom: 2,
       center: { lat: 0, lng: 0 },
       mapTypeId: google.maps.MapTypeId.ROADMAP,
       disableDefaultUI: true,
-      // styles: dark
+      styles: light
     });
 
     // Store map instance
@@ -112,9 +112,15 @@ export default class MapController extends DatasetController {
 
   draw() {
     if (!this.map) return;
+
+    this.map.getDiv().style.top = this.chart.chartArea.top + "px";
+
     const dataset = this.chart.data.datasets[0] as MapChartDataset;
     const options = this.chart.options as MapChartOptions;
     const bounds = new google.maps.LatLngBounds();
+
+    const bgColor = options.backgroundColor || Chart.defaults.backgroundColor.toString() || "#9BD0F5";
+    const borderColor = options.borderColor || Chart.defaults.borderColor.toString() || "#36A2EB";
 
     // Clear existing markers
     this.markers.forEach((marker: google.maps.Marker) => {
@@ -123,6 +129,7 @@ export default class MapController extends DatasetController {
 
     this.markers.clear();
 
+    const labels = (this.chart.data.labels || []) as string[];
     // Add new point markers
     const markers = dataset.data.filter(a => a.type === "point").map((point: PointDataPoint, index: number) => {
       const position = new google.maps.LatLng(point.lat, point.lng);
@@ -131,12 +138,12 @@ export default class MapController extends DatasetController {
       const marker = new google.maps.Marker({
         position,
         map: this.map,
-        title: point.label,
+        title: labels[index],
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: point.size || options.markerStyle?.defaultSize || 8,
-          fillColor: (point.color || options.markerStyle?.defaultColor || '#FF0000'),
-          strokeColor: point.color || options.markerStyle?.defaultColor || '#FF0000',
+          scale: 8,
+          fillColor: dataset.backgroundColor || bgColor,
+          strokeColor: dataset.borderColor || borderColor,
           fillOpacity: 0.7,
           strokeWeight: 1
         }
@@ -158,7 +165,7 @@ export default class MapController extends DatasetController {
       const flightPath = new google.maps.Polyline({
         path: point.points,
         geodesic: true,
-        strokeColor: "#FF0000",
+        strokeColor: dataset.borderColor || borderColor,
         strokeOpacity: 1.0,
         strokeWeight: 2,
       });
@@ -176,8 +183,8 @@ export default class MapController extends DatasetController {
       const flightPath = new google.maps.Polygon({
         paths: point.points,
 
-        fillColor: (point.color || options.markerStyle?.defaultColor || '#FF0000'),
-        strokeColor: point.color || options.markerStyle?.defaultColor || '#FF0000',
+        fillColor: dataset.backgroundColor || bgColor,
+        strokeColor: dataset.borderColor || borderColor,
         fillOpacity: 0.7,
         strokeWeight: 1
       });

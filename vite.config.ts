@@ -10,11 +10,11 @@ export default defineConfig({
         lib: {
             entry: path.resolve(__dirname, "src/index.ts"),
             name: "lib",
-            formats: ["es", "umd"],
-            fileName: (format) => `index.${format}.js`,
+            formats: ["es", "cjs"],
+            fileName: (format) => `${format}/index.js`,
         },
         rollupOptions: {
-            external: ['chart.js'],
+            external: ['chart.js', 'canvas'],
         },
     },
 } satisfies UserConfig);

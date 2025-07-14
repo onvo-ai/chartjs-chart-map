@@ -1,0 +1,21 @@
+.gm-style .gm-style-iw {
+  display: flex !important;
+  flex-direction: row-reverse !important;
+  align-items: center;
+  justify-content: space-between !important;
+  border-radius: 100px !important;
+  padding-left: 12px !important;
+  padding-right: 4px !important;
+}
+
+.gm-style .gm-style-iw .gm-ui-hover-effect {
+  height: 32px !important;
+  width: 32px !important;
+  margin-left: 10px !important;
+}
+.gm-style .gm-style-iw .gm-ui-hover-effect span {
+  margin: 4px !important;
+}
+.gm-style .gm-style-iw-d {
+  overflow: hidden !important;
+}

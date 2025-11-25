@@ -34,6 +34,7 @@ export class MarkerController extends DatasetController {
     };
 
     points: GoogleMarker[] = []; // Use conditional type for the instance property
+    openInfoWindow: any = null; // Track currently open InfoWindow (if any)
 
     getDataset() {
         let data = this.chart.data.datasets[this.index] as any;
@@ -90,16 +91,36 @@ export class MarkerController extends DatasetController {
                 }
             });
 
+            // Create a single InfoWindow for this marker and store it on the marker
+            const infowindow = new window.google.maps.InfoWindow({
+                content: `<h3 style="font-size: 16px; font-weight: bold; margin-top: 0px; margin-bottom: 0px">${dataset.label}</h3>`,
+                ariaLabel: dataset.label,
+            });
+            (marker as any).__infowindow = infowindow;
+
+            // Toggle the InfoWindow on click. Also ensure only one InfoWindow is open at a time.
             marker.addListener("click", () => {
                 if (!isGoogleMapsAvailable() || !map) return; // Double check guard for safety
-                const infowindow = new window.google.maps.InfoWindow({
-                    content: `<h3 style="font-size: 16px; font-weight: bold; margin-top: 0px; margin-bottom: 0px">${dataset.label}</h3>`,
-                    ariaLabel: dataset.label,
-                });
-                infowindow.open({
+
+                const iw = (marker as any).__infowindow;
+
+                // If this marker's InfoWindow is already open, close it
+                if (iw && typeof iw.getMap === 'function' && iw.getMap()) {
+                    iw.close();
+                    if (this.openInfoWindow === iw) this.openInfoWindow = null;
+                    return;
+                }
+
+                // Close previously open InfoWindow (if any) before opening the new one
+                if (this.openInfoWindow && typeof this.openInfoWindow.close === 'function') {
+                    this.openInfoWindow.close();
+                }
+
+                iw.open({
                     anchor: marker,
                     map: map,
                 });
+                this.openInfoWindow = iw;
             });
 
             this.points.push(marker as GoogleMarker); // Cast to GoogleMarker when pushing to the typed array
@@ -108,8 +129,21 @@ export class MarkerController extends DatasetController {
 
     clearPoints() {
         if (!isGoogleMapsAvailable() || !(this.chart as any).map) return;
-        this.points.forEach(point => (point as google.maps.Marker).setMap(null)); // Cast to actual GMaps type for method call
+        this.points.forEach(point => {
+            const m = point as any;
+            // Close any open InfoWindow attached to the marker
+            if (m.__infowindow && typeof m.__infowindow.close === 'function') {
+                try {
+                    m.__infowindow.close();
+                } catch (e) {
+                    // ignore
+                }
+            }
+            // Remove marker from map
+            (point as google.maps.Marker).setMap(null);
+        });
         this.points = [];
+        this.openInfoWindow = null;
     }
 
     update(mode: string) {
